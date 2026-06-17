@@ -8,7 +8,6 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // On app load, restore user from localStorage if token exists
     const savedUser = localStorage.getItem("user");
     if (token && savedUser) {
       setUser(JSON.parse(savedUser));

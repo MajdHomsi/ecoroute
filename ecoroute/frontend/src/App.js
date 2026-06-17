@@ -10,7 +10,7 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Default — redirect to login */}
+          {/*redirect to login */}
           <Route path="/" element={<Navigate to="/login" replace />} />
 
           {/* Public routes */}

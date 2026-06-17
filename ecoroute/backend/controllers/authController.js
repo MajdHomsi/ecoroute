@@ -2,7 +2,6 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 
-// ── Helper: generate JWT ────────────────────────────────────────────────────
 function generateToken(user) {
   return jwt.sign(
     { id: user.id, email: user.email },
@@ -10,12 +9,9 @@ function generateToken(user) {
     { expiresIn: '7d' }
   );
 }
-
-// ── POST /api/auth/register ─────────────────────────────────────────────────
 const register = async (req, res) => {
   const { name, email, password } = req.body;
 
-  // Basic validation
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'Name, email, and password are required.' });
   }
@@ -25,17 +21,14 @@ const register = async (req, res) => {
   }
 
   try {
-    // Check if email already exists
     const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
     if (existing.rows.length > 0) {
       return res.status(409).json({ error: 'An account with this email already exists.' });
     }
 
-    // Hash the password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Insert user into DB
     const result = await pool.query(
       'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email',
       [name, email, hashedPassword]
@@ -56,7 +49,6 @@ const register = async (req, res) => {
   }
 };
 
-// ── POST /api/auth/login ────────────────────────────────────────────────────
 const login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -65,7 +57,6 @@ const login = async (req, res) => {
   }
 
   try {
-    // Find user by email
     const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid email or password.' });
@@ -73,7 +64,6 @@ const login = async (req, res) => {
 
     const user = result.rows[0];
 
-    // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid email or password.' });
@@ -93,7 +83,6 @@ const login = async (req, res) => {
   }
 };
 
-// ── GET /api/auth/me (protected — verify token works) ──────────────────────
 const getMe = async (req, res) => {
   try {
     const result = await pool.query(

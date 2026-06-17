@@ -1,6 +1,3 @@
--- Run this in your Supabase SQL Editor
--- Go to: Supabase Dashboard → SQL Editor → New Query → paste this → Run
-
 CREATE TABLE IF NOT EXISTS users (
   id        SERIAL PRIMARY KEY,
   name      VARCHAR(100)        NOT NULL,
