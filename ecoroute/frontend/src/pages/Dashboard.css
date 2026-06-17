@@ -240,3 +240,11 @@ body {
   color: #64748b;
   font-size: 14px;
 }
+
+.chart-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  margin-bottom: 24px;
+}

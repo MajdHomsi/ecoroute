@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
 import "./Dashboard.css";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 const TRANSPORT_MODES = [
   { value: "car_petrol", label: "Car (Petrol)" },
@@ -134,6 +135,27 @@ export default function Dashboard() {
         </div>
 
         {/* Trip logging form */}
+        
+        <div className="chart-card">
+          <h2 className="section-title">CO₂ by Trip</h2>
+          {trips.length === 0 ? (
+            <p className="dash-loading">Log a trip to see your chart.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={[...trips].reverse().map(t => ({
+                date: new Date(t.trip_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                co2: parseFloat(t.co2e_kg)
+              }))}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} label={{ value: 'kg CO₂', angle: -90, position: 'insideLeft', fontSize: 12 }} />
+                <Tooltip formatter={(value) => [`${value} kg`, 'CO₂']} />
+                <Bar dataKey="co2" fill="#1a7a4a" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
         <div className="trip-form-card">
           <h2 className="section-title">Log a Trip</h2>
           {error && <div className="dash-error">{error}</div>}
