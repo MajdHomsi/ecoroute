@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   createTrip,
   getTrips,
+  getBreakdown,
   getSummary,
   updateTrip,
   deleteTrip
@@ -13,6 +14,7 @@ router.use(authMiddleware);
 
 router.post('/', createTrip);
 router.get('/', getTrips);
+router.get('/breakdown', getBreakdown);
 router.get('/summary', getSummary);
 router.put('/:id', updateTrip);
 router.delete('/:id', deleteTrip);

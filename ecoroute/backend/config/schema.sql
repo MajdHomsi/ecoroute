@@ -5,3 +5,13 @@ CREATE TABLE IF NOT EXISTS users (
   password  VARCHAR(255)        NOT NULL,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS trips (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  transport_mode VARCHAR(100) NOT NULL,
+  distance_km NUMERIC NOT NULL,
+  co2e_kg NUMERIC NOT NULL,
+  trip_date DATE NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);

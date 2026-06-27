@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
 import "./Dashboard.css";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 
 const TRANSPORT_MODES = [
   { value: "car_petrol", label: "Car (Petrol)" },
@@ -24,6 +24,7 @@ export default function Dashboard() {
 
   const [summary, setSummary] = useState({ co2_this_week: 0, co2_this_month: 0, trips_logged: 0 });
   const [trips, setTrips] = useState([]);
+  const [breakdown, setBreakdown] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -35,14 +36,37 @@ export default function Dashboard() {
   });
   const [submitting, setSubmitting] = useState(false);
 
+  // filters & pagination
+  const [modeFilter, setModeFilter] = useState('all');
+  const [startFilter, setStartFilter] = useState('');
+  const [endFilter, setEndFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [expandedTrip, setExpandedTrip] = useState(null);
+
   const fetchData = async () => {
     try {
-      const [summaryRes, tripsRes] = await Promise.all([
+      setLoading(true);
+
+      const params = {
+        page,
+        limit,
+      };
+      if (modeFilter && modeFilter !== 'all') params.transport_mode = modeFilter;
+      if (startFilter) params.start_date = startFilter;
+      if (endFilter) params.end_date = endFilter;
+
+      const [summaryRes, tripsRes, breakdownRes] = await Promise.all([
         api.get("/trips/summary"),
-        api.get("/trips"),
+        api.get("/trips", { params }),
+        api.get("/trips/breakdown", { params: { start_date: startFilter, end_date: endFilter } }),
       ]);
+
       setSummary(summaryRes.data);
       setTrips(tripsRes.data.trips);
+      setTotal(tripsRes.data.pagination?.total || 0);
+      setBreakdown(breakdownRes.data.breakdown || []);
     } catch (err) {
       console.error(err);
       setError("Could not load your data.");
@@ -54,6 +78,11 @@ export default function Dashboard() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    // refetch when filters or page change
+    fetchData();
+  }, [modeFilter, startFilter, endFilter, page, limit]);
 
   const handleLogout = () => {
     logout();
@@ -138,7 +167,36 @@ export default function Dashboard() {
         
         <div className="chart-card">
           <h2 className="section-title">CO₂ by Trip</h2>
-          {trips.length === 0 ? (
+            {/* Filters */}
+            <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+              <div>
+                <label>Mode</label>
+                <select value={modeFilter} onChange={(e) => { setModeFilter(e.target.value); setPage(1); }}>
+                  <option value="all">All</option>
+                  {TRANSPORT_MODES.map((m) => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label>Start</label>
+                <input type="date" value={startFilter} onChange={(e) => { setStartFilter(e.target.value); setPage(1); }} />
+              </div>
+              <div>
+                <label>End</label>
+                <input type="date" value={endFilter} onChange={(e) => { setEndFilter(e.target.value); setPage(1); }} />
+              </div>
+              <div>
+                <label>Per page</label>
+                <select value={limit} onChange={(e) => { setLimit(parseInt(e.target.value,10)); setPage(1); }}>
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                </select>
+              </div>
+            </div>
+
+            {trips.length === 0 ? (
             <p className="dash-loading">Log a trip to see your chart.</p>
           ) : (
             <ResponsiveContainer width="100%" height={250}>
@@ -155,6 +213,25 @@ export default function Dashboard() {
             </ResponsiveContainer>
           )}
         </div>
+
+          <div className="chart-card" style={{ marginTop: 16 }}>
+            <h2 className="section-title">CO₂ by Transport Mode</h2>
+            {breakdown.length === 0 ? (
+              <p className="dash-loading">No data for breakdown.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <PieChart>
+                  <Pie dataKey="total_co2" data={breakdown} nameKey="transport_mode" cx="50%" cy="50%" outerRadius={80} label={(entry)=>modeLabel(entry.transport_mode)}>
+                    {breakdown.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={["#1a7a4a","#2a9d8f","#e9c46a","#f4a261","#e76f51","#66c2a5","#8dd3c7","#bebada","#fb8072","#80b1d3"][index % 10]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [`${value} kg`, 'CO₂']} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
 
         <div className="trip-form-card">
           <h2 className="section-title">Log a Trip</h2>
@@ -212,6 +289,7 @@ export default function Dashboard() {
               <p>Use the form above to log your first trip!</p>
             </div>
           ) : (
+            <>
             <table className="trip-table">
               <thead>
                 <tr>
@@ -224,20 +302,45 @@ export default function Dashboard() {
               </thead>
               <tbody>
                 {trips.map((trip) => (
-                  <tr key={trip.id}>
-                    <td>{new Date(trip.trip_date).toLocaleDateString()}</td>
-                    <td>{modeLabel(trip.transport_mode)}</td>
-                    <td>{trip.distance_km} km</td>
-                    <td>{trip.co2e_kg} kg</td>
-                    <td>
-                      <button className="delete-btn" onClick={() => handleDelete(trip.id)}>
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
+                  <React.Fragment key={trip.id}>
+                    <tr>
+                      <td>{new Date(trip.trip_date).toLocaleDateString()}</td>
+                      <td>{modeLabel(trip.transport_mode)}</td>
+                      <td>{trip.distance_km} km</td>
+                      <td>{trip.co2e_kg} kg</td>
+                      <td style={{ display: 'flex', gap: 8 }}>
+                        <button className="delete-btn" onClick={() => handleDelete(trip.id)}>
+                          Delete
+                        </button>
+                        <button className="delete-btn" onClick={() => setExpandedTrip(expandedTrip === trip.id ? null : trip.id)}>
+                          {expandedTrip === trip.id ? 'Close' : 'Details'}
+                        </button>
+                      </td>
+                    </tr>
+                    {expandedTrip === trip.id && (
+                      <tr className="trip-detail-row">
+                        <td colSpan={5} style={{ background: '#f9f9f9' }}>
+                          <div style={{ display: 'flex', gap: 24 }}>
+                            <div><strong>Emission factor:</strong> {trip.emission_factor} kg/km</div>
+                            <div><strong>CO₂ recorded:</strong> {trip.co2e_kg} kg</div>
+                            <div><strong>Distance:</strong> {trip.distance_km} km</div>
+                            <div><strong>Transport:</strong> {modeLabel(trip.transport_mode)}</div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
+              <div>Showing page {page} of {Math.max(1, Math.ceil(total / limit))}</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>Prev</button>
+                <button onClick={() => setPage((p) => p + 1)} disabled={page >= Math.ceil(total / limit)}>Next</button>
+              </div>
+            </div>
+            </>
           )}
         </div>
       </main>
