@@ -47,6 +47,8 @@ export default function Dashboard() {
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [expandedTrip, setExpandedTrip] = useState(null);
+  const [editTrip, setEditTrip] = useState(null);
+  const [editForm, setEditForm] = useState({ transport_mode: "", distance_km: "", trip_date: "" });
 
   const fetchData = async () => {
     try {
@@ -111,6 +113,21 @@ export default function Dashboard() {
       setError("Could not delete trip.");
     }
   };
+
+  const handleEditSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    await api.put(`/trips/${editTrip.id}`, {
+      transport_mode: editForm.transport_mode,
+      distance_km: parseFloat(editForm.distance_km),
+      trip_date: editForm.trip_date,
+    });
+    setEditTrip(null);
+    await fetchData();
+  } catch (err) {
+    setError(err.response?.data?.error || "Could not update trip.");
+  }
+};
 
   const modeLabel = (value) => {
     const found = TRANSPORT_MODES.find((m) => m.value === value);
@@ -290,15 +307,25 @@ export default function Dashboard() {
                         <td>{trip.distance_km} km</td>
                         <td>{trip.co2e_kg} kg</td>
                         <td>
-                          <div className="trip-actions">
-                            <button className="details-btn"
-                              onClick={() => setExpandedTrip(expandedTrip === trip.id ? null : trip.id)}>
-                              {expandedTrip === trip.id ? "Close" : "Details"}
-                            </button>
-                            <button className="delete-btn" onClick={() => handleDelete(trip.id)}>
-                              Delete
-                            </button>
-                          </div>
+                         <div className="trip-actions">
+  <button className="details-btn"
+    onClick={() => setExpandedTrip(expandedTrip === trip.id ? null : trip.id)}>
+    {expandedTrip === trip.id ? "Close" : "Details"}
+  </button>
+<button className="edit-btn" onClick={() => {
+  setEditTrip(trip);
+  setEditForm({
+    transport_mode: trip.transport_mode,
+    distance_km: trip.distance_km,
+    trip_date: trip.trip_date?.split("T")[0],
+  });
+}}>
+  Edit
+</button>
+  <button className="delete-btn" onClick={() => handleDelete(trip.id)}>
+    Delete
+  </button>
+</div>
                         </td>
                       </tr>
                       {expandedTrip === trip.id && (
@@ -328,6 +355,43 @@ export default function Dashboard() {
             </>
           )}
         </div>
+        {}
+{editTrip && (
+  <div className="modal-overlay" onClick={() => setEditTrip(null)}>
+    <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+      <h2 className="section-title">Edit Trip</h2>
+      <form onSubmit={handleEditSubmit} className="trip-form">
+        <div className="form-group">
+          <label>Transport Mode</label>
+<select
+  value={editForm.transport_mode}
+  onChange={(e) => setEditForm({ ...editForm, transport_mode: e.target.value })}>
+            {TRANSPORT_MODES.map((m) => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="form-group">
+          <label>Distance (km)</label>
+          <input type="number"
+            value={editForm.distance_km}
+            onChange={(e) => setEditForm({ ...editForm, distance_km: e.target.value })}
+            min="0" step="0.1" />
+        </div>
+        <div className="form-group">
+          <label>Date</label>
+          <input type="date"
+            value={editForm.trip_date}
+            onChange={(e) => setEditForm({ ...editForm, trip_date: e.target.value })} />
+        </div>
+        <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+          <button type="submit" className="log-trip-btn">Save Changes</button>
+          <button type="button" className="details-btn" onClick={() => setEditTrip(null)}>Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
       </main>
     </div>
   );
