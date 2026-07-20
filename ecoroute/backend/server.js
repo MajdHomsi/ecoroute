@@ -11,6 +11,7 @@ require('./config/db');
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/trips', require('./routes/trips'));
+app.use('/api/ai', require('./routes/ai'));
 
 
 app.get('/', (req, res) => {

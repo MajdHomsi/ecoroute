@@ -433,3 +433,211 @@ body {
   border: 1px solid rgba(255,255,255,0.1);
   box-shadow: 0 8px 40px rgba(0,0,0,0.5);
 }
+/* ── Floating Chat Widget ─────────────────── */
+.chat-widget {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.chat-teaser {
+  background: #1a7a4a;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 20px rgba(26,122,74,0.4);
+  animation: pulse-glow 2s infinite;
+}
+
+.chat-teaser-dot {
+  width: 8px;
+  height: 8px;
+  background: #4ade80;
+  border-radius: 50%;
+  animation: blink 1.2s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 4px 20px rgba(26,122,74,0.4); }
+  50% { box-shadow: 0 4px 30px rgba(74,222,128,0.6); }
+}
+
+.chat-toggle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #1a7a4a;
+  color: white;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-toggle:hover { background: #155f3a; }
+
+.chat-box {
+  width: 340px;
+  max-height: 80vh;
+  background: #0f1a13;
+  border-radius: 16px;
+  border: 1px solid rgba(74,222,128,0.2);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-box-header {
+  background: #1a7a4a;
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chat-box-header button {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.chat-box-header button:hover { opacity: 1; }
+
+.ai-messages {
+  min-height: 80px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-empty {
+  text-align: center;
+  padding: 8px 0;
+}
+
+.ai-empty p {
+  color: rgba(255,255,255,0.35);
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.ai-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.ai-suggestion {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.6);
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ai-suggestion:hover {
+  background: rgba(74,222,128,0.1);
+  border-color: rgba(74,222,128,0.3);
+  color: #4ade80;
+}
+
+.ai-message { display: flex; }
+.ai-message.user { justify-content: flex-end; }
+.ai-message.assistant { justify-content: flex-start; }
+
+.ai-bubble {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.ai-message.user .ai-bubble {
+  background: #1a7a4a;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.ai-message.assistant .ai-bubble {
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.85);
+  border-bottom-left-radius: 4px;
+}
+
+.ai-typing {
+  color: rgba(255,255,255,0.4) !important;
+  font-style: italic;
+}
+
+.ai-input-row {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+
+.ai-input {
+  flex: 1;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  color: white;
+  font-size: 12px;
+  outline: none;
+}
+
+.ai-input:focus { border-color: rgba(74,222,128,0.4); }
+.ai-input::placeholder { color: rgba(255,255,255,0.25); }
+
+.ai-btn {
+  background: #1a7a4a;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.ai-btn:hover { background: #155f3a; }
+.ai-btn:disabled { background: rgba(26,122,74,0.4); cursor: not-allowed; }

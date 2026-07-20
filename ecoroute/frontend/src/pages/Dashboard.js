@@ -49,6 +49,10 @@ export default function Dashboard() {
   const [expandedTrip, setExpandedTrip] = useState(null);
   const [editTrip, setEditTrip] = useState(null);
   const [editForm, setEditForm] = useState({ transport_mode: "", distance_km: "", trip_date: "" });
+  const [chatHistory, setChatHistory] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -115,19 +119,42 @@ export default function Dashboard() {
   };
 
   const handleEditSubmit = async (e) => {
-  e.preventDefault();
-  try {
-    await api.put(`/trips/${editTrip.id}`, {
-      transport_mode: editForm.transport_mode,
-      distance_km: parseFloat(editForm.distance_km),
-      trip_date: editForm.trip_date,
-    });
-    setEditTrip(null);
-    await fetchData();
-  } catch (err) {
-    setError(err.response?.data?.error || "Could not update trip.");
-  }
-};
+    e.preventDefault();
+    try {
+      await api.put(`/trips/${editTrip.id}`, {
+        transport_mode: editForm.transport_mode,
+        distance_km: parseFloat(editForm.distance_km),
+        trip_date: editForm.trip_date,
+      });
+      setEditTrip(null);
+      await fetchData();
+    } catch (err) {
+      setError(err.response?.data?.error || "Could not update trip.");
+    }
+  };
+
+  const handleChatSend = async (overrideMessage) => {
+    const message = overrideMessage || chatInput.trim();
+    if (!message) return;
+
+    const userMsg = { role: "user", content: message };
+    const updatedHistory = [...chatHistory, userMsg];
+    setChatHistory(updatedHistory);
+    setChatInput("");
+    setAiLoading(true);
+
+    try {
+      const res = await api.post("/ai/chat", {
+        message,
+        history: updatedHistory.slice(-6).map(m => ({ role: m.role, content: m.content }))
+      });
+      setChatHistory([...updatedHistory, { role: "assistant", content: res.data.reply }]);
+    } catch (err) {
+      setChatHistory([...updatedHistory, { role: "assistant", content: "Sorry, I couldn't get a response. Please try again." }]);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const modeLabel = (value) => {
     const found = TRANSPORT_MODES.find((m) => m.value === value);
@@ -172,8 +199,8 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        
-                {/* Log a trip */}
+
+        {/* Log a trip */}
         <div className="trip-form-card">
           <h2 className="section-title">Log a Trip</h2>
           {error && <div className="dash-error">{error}</div>}
@@ -232,9 +259,8 @@ export default function Dashboard() {
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
-     <Pie dataKey="total_co2" data={breakdown} nameKey="transport_mode"
-                    cx="50%" cy="50%" outerRadius={65}
-                    label={false}>
+                  <Pie dataKey="total_co2" data={breakdown} nameKey="transport_mode"
+                    cx="50%" cy="50%" outerRadius={65} label={false}>
                     {breakdown.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                     ))}
@@ -250,8 +276,6 @@ export default function Dashboard() {
         {/* Trip history */}
         <div className="trip-history-card">
           <h2 className="section-title">Trip History</h2>
-
-          {/* Filters */}
           <div className="filters-row">
             <div className="filter-group">
               <label>Mode</label>
@@ -307,25 +331,25 @@ export default function Dashboard() {
                         <td>{trip.distance_km} km</td>
                         <td>{trip.co2e_kg} kg</td>
                         <td>
-                         <div className="trip-actions">
-  <button className="details-btn"
-    onClick={() => setExpandedTrip(expandedTrip === trip.id ? null : trip.id)}>
-    {expandedTrip === trip.id ? "Close" : "Details"}
-  </button>
-<button className="edit-btn" onClick={() => {
-  setEditTrip(trip);
-  setEditForm({
-    transport_mode: trip.transport_mode,
-    distance_km: trip.distance_km,
-    trip_date: trip.trip_date?.split("T")[0],
-  });
-}}>
-  Edit
-</button>
-  <button className="delete-btn" onClick={() => handleDelete(trip.id)}>
-    Delete
-  </button>
-</div>
+                          <div className="trip-actions">
+                            <button className="details-btn"
+                              onClick={() => setExpandedTrip(expandedTrip === trip.id ? null : trip.id)}>
+                              {expandedTrip === trip.id ? "Close" : "Details"}
+                            </button>
+                            <button className="edit-btn" onClick={() => {
+                              setEditTrip(trip);
+                              setEditForm({
+                                transport_mode: trip.transport_mode,
+                                distance_km: trip.distance_km,
+                                trip_date: trip.trip_date?.split("T")[0],
+                              });
+                            }}>
+                              Edit
+                            </button>
+                            <button className="delete-btn" onClick={() => handleDelete(trip.id)}>
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                       {expandedTrip === trip.id && (
@@ -344,7 +368,6 @@ export default function Dashboard() {
                   ))}
                 </tbody>
               </table>
-
               <div className="pagination-row">
                 <span>Page {page} of {totalPages}</span>
                 <div className="pagination-btns">
@@ -355,44 +378,113 @@ export default function Dashboard() {
             </>
           )}
         </div>
-        {}
-{editTrip && (
-  <div className="modal-overlay" onClick={() => setEditTrip(null)}>
-    <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-      <h2 className="section-title">Edit Trip</h2>
-      <form onSubmit={handleEditSubmit} className="trip-form">
-        <div className="form-group">
-          <label>Transport Mode</label>
-<select
-  value={editForm.transport_mode}
-  onChange={(e) => setEditForm({ ...editForm, transport_mode: e.target.value })}>
-            {TRANSPORT_MODES.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
-        </div>
-        <div className="form-group">
-          <label>Distance (km)</label>
-          <input type="number"
-            value={editForm.distance_km}
-            onChange={(e) => setEditForm({ ...editForm, distance_km: e.target.value })}
-            min="0" step="0.1" />
-        </div>
-        <div className="form-group">
-          <label>Date</label>
-          <input type="date"
-            value={editForm.trip_date}
-            onChange={(e) => setEditForm({ ...editForm, trip_date: e.target.value })} />
-        </div>
-        <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-          <button type="submit" className="log-trip-btn">Save Changes</button>
-          <button type="button" className="details-btn" onClick={() => setEditTrip(null)}>Cancel</button>
-        </div>
-      </form>
-    </div>
-  </div>
-)}
       </main>
+
+      {/* Floating Chat Widget */}
+      <div className="chat-widget">
+        {!chatOpen && (
+          <div className="chat-teaser" onClick={() => setChatOpen(true)}>
+            <span className="chat-teaser-dot"></span>
+            Talk to your Carbon Coach
+          </div>
+        )}
+        <button className="chat-toggle" onClick={() => setChatOpen(!chatOpen)}>
+          {chatOpen ? "✕" : "🌿"}
+        </button>
+        {chatOpen && (
+          <div className="chat-box">
+<div className="chat-box-header">
+              <span>🌿 Carbon Coach</span>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                {chatHistory.length > 0 && (
+                  <button onClick={() => setChatHistory([])} style={{ fontSize: 11, opacity: 0.7, background: 'transparent', border: 'none', color: 'white', cursor: 'pointer' }}>Clear</button>
+                )}
+                <button onClick={() => setChatOpen(false)}>✕</button>
+              </div>
+            </div>
+<div className="ai-messages">
+              {chatHistory.length === 0 && (
+                <div className="ai-empty">
+                  <p>Ask me anything about your trips!</p>
+                  <div className="ai-suggestions">
+                    <button className="ai-suggestion" onClick={() => handleChatSend("Give me tips to reduce my carbon footprint")}>Give me tips</button>
+                    <button className="ai-suggestion" onClick={() => handleChatSend("What is my total CO2 this month?")}>CO2 this month?</button>
+                    <button className="ai-suggestion" onClick={() => handleChatSend("Which transport mode do I use most?")}>Most used mode?</button>
+                  </div>
+                </div>
+              )}
+              {chatHistory.length > 0 && (
+                <div className="ai-suggestions" style={{ marginBottom: 8 }}>
+                  <button className="ai-suggestion" onClick={() => handleChatSend("Give me more tips")}>More tips</button>
+                  <button className="ai-suggestion" onClick={() => handleChatSend("Which was my highest CO2 trip?")}>Highest CO2 trip?</button>
+                  <button className="ai-suggestion" onClick={() => handleChatSend("How can I improve next month?")}>Improve next month?</button>
+                  <button className="ai-suggestion" style={{ borderColor: 'rgba(220,38,38,0.3)', color: '#f87171' }} onClick={() => setChatHistory([])}>End chat</button>
+                </div>
+              )}
+              {chatHistory.map((msg, i) => (
+                <div key={i} className={`ai-message ${msg.role}`}>
+                  <div className="ai-bubble" dangerouslySetInnerHTML={{ __html: msg.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>') }} />
+                </div>
+              ))}
+              {aiLoading && (
+                <div className="ai-message assistant">
+                  <div className="ai-bubble ai-typing">Thinking...</div>
+                </div>
+              )}
+            </div>
+            <div className="ai-input-row">
+              <input
+                type="text"
+                className="ai-input"
+                placeholder="Ask about your trips..."
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleChatSend()}
+              />
+              <button className="ai-btn" onClick={() => handleChatSend()} disabled={aiLoading || !chatInput.trim()}>
+                Send
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Edit modal */}
+      {editTrip && (
+        <div className="modal-overlay" onClick={() => setEditTrip(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2 className="section-title">Edit Trip</h2>
+            <form onSubmit={handleEditSubmit} className="trip-form">
+              <div className="form-group">
+                <label>Transport Mode</label>
+                <select value={editForm.transport_mode}
+                  onChange={(e) => setEditForm({ ...editForm, transport_mode: e.target.value })}>
+                  {TRANSPORT_MODES.map((m) => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Distance (km)</label>
+                <input type="number"
+                  value={editForm.distance_km}
+                  onChange={(e) => setEditForm({ ...editForm, distance_km: e.target.value })}
+                  min="0" step="0.1" />
+              </div>
+              <div className="form-group">
+                <label>Date</label>
+                <input type="date"
+                  value={editForm.trip_date}
+                  onChange={(e) => setEditForm({ ...editForm, trip_date: e.target.value })} />
+              </div>
+              <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                <button type="submit" className="log-trip-btn">Save Changes</button>
+                <button type="button" className="details-btn" onClick={() => setEditTrip(null)}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
